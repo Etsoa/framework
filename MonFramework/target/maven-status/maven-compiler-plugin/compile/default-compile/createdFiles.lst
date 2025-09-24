@@ -1,2 +1,1 @@
-com\monframework\annotations\WebRoute.class
-com\monframework\Framework.class
+itu\framework\servlet\FrontServlet.class
