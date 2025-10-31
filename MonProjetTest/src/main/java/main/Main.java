@@ -1,13 +1,14 @@
 
 package main;
 
-import annotation.MyController;
+import itu.framework.annotations.MyController;
 import java.lang.reflect.Method;
 import itu.framework.annotations.MyURL;
 import java.io.File;
 import java.net.URL;
 
 import models.Personne;
+import itu.framework.util.ControllerScanner;
 
 public class Main {
     public static void main(String[] args) {
@@ -28,6 +29,15 @@ public class Main {
             System.out.println("ClassesDir: " + classesDir);
             System.out.println("Directory: " + directory);
             findClasses(directory, "");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Tester le scanner de contrôleurs
+        try {
+            System.out.println("\n=== Test du Scanner de Contrôleurs ===");
+            ControllerScanner.scanAndSaveControllers();
+            System.out.println("Scan terminé !");
         } catch (Exception e) {
             e.printStackTrace();
         }

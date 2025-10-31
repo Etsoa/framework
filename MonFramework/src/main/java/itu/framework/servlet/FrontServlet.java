@@ -2,11 +2,19 @@ package itu.framework.servlet;
 
 import java.io.IOException;
 
+import itu.framework.util.ControllerScanner;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public class FrontServlet extends HttpServlet {
+    
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        ControllerScanner.scanAndSaveControllers();
+    }
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         service(req, resp);
