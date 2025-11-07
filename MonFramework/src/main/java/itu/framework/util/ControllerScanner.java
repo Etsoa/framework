@@ -2,6 +2,7 @@ package itu.framework.util;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,23 +15,27 @@ public class ControllerScanner {
     public static Map<String, Method> scanControllers(ServletContext servletContext) {
         Map<String, Method> urlMapping = new HashMap<>();
         
-        System.out.println("=== Début du scan des contrôleurs ===");
-        
         try {
-            // Obtenir le chemin réel des classes depuis le ServletContext
-            String classesPath = servletContext.getRealPath("/WEB-INF/classes");
-            System.out.println("Classes path: " + classesPath);
+            String packagesToScan = servletContext.getInitParameter("packagesToScan");
             
-            File classesDir = new File(classesPath);
-            System.out.println("Existe: " + classesDir.exists());
-            
-            if (classesDir.exists() && classesDir.isDirectory()) {
-                findClasses(classesDir, "", urlMapping);
+            if (packagesToScan != null && !packagesToScan.trim().isEmpty()) {
+                // Scanner uniquement les packages spécifiés
+                ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+                String[] packages = packagesToScan.split(",");
+                for (String pkg : packages) {
+                    pkg = pkg.trim();
+                    scanPackage(pkg, classLoader, urlMapping);
+                }
             } else {
-                System.out.println("ERREUR: Le répertoire des classes n'existe pas!");
+                // Scanner tous les packages
+                String classesPath = servletContext.getRealPath("/WEB-INF/classes");
+                if (classesPath != null) {
+                    File classesDir = new File(classesPath);
+                    if (classesDir.exists() && classesDir.isDirectory()) {
+                        scanDirectory(classesDir, "", urlMapping);
+                    }
+                }
             }
-            
-            System.out.println("Nombre d'URLs mappées: " + urlMapping.size());
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -39,38 +44,46 @@ public class ControllerScanner {
         return urlMapping;
     }
 
-    private static void findClasses(File directory, String packageName, Map<String, Method> urlMapping) {
-        if (!directory.exists()) {
-            return;
+    private static void scanPackage(String packageName, ClassLoader classLoader, Map<String, Method> urlMapping) {
+        try {
+            String path = packageName.replace('.', '/');
+            URL resource = classLoader.getResource(path);
+            
+            if (resource != null) {
+                File directory = new File(resource.getFile());
+                if (directory.exists() && directory.isDirectory()) {
+                    scanDirectory(directory, packageName, urlMapping);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    private static void scanDirectory(File directory, String packageName, Map<String, Method> urlMapping) {
         File[] files = directory.listFiles();
         if (files == null) return;
         
         for (File file : files) {
             if (file.isDirectory()) {
                 String newPackage = packageName.isEmpty() ? file.getName() : packageName + "." + file.getName();
-                findClasses(file, newPackage, urlMapping);
+                scanDirectory(file, newPackage, urlMapping);
             } else if (file.getName().endsWith(".class")) {
                 String className = packageName + '.' + file.getName().substring(0, file.getName().length() - 6);
-                System.out.println("Classe trouvée: " + className);
                 try {
                     Class<?> clazz = Class.forName(className);
                     if (clazz.isAnnotationPresent(MyController.class)) {
-                        System.out.println("✓ Contrôleur: " + clazz.getSimpleName());
-                        
-                        // Scanner les méthodes de cette classe pour @MyURL
                         Method[] methods = clazz.getDeclaredMethods();
                         for (Method method : methods) {
                             if (method.isAnnotationPresent(MyURL.class)) {
                                 MyURL urlAnn = method.getAnnotation(MyURL.class);
                                 String url = urlAnn.value();
                                 urlMapping.put(url, method);
-                                System.out.println("  ✓ Mapping: " + url + " -> " + method.getName());
                             }
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println("  ✗ Erreur: " + e.getMessage());
+                    // Ignorer les classes non chargeables
                 }
             }
         }
