@@ -2,6 +2,7 @@ package controller;
 
 import itu.framework.annotations.MyController;
 import itu.framework.annotations.MyURL;
+import itu.framework.model.ModelView;
 
 @MyController(value = "Test")
 public class ControllerTest {
@@ -14,5 +15,15 @@ public class ControllerTest {
     @MyURL(value = "/hello")
     public String hello() {
         return "Hello World depuis le contrôleur !";
+    }
+
+    @MyURL(value = "/page")
+    public ModelView showPage() {
+        return new ModelView("index.jsp");  // Chemin complet depuis webapp
+    }
+
+    @MyURL(value = "/admin")
+    public ModelView showAdmin() {
+        return new ModelView("admin/dashboard.jsp");  // Chemin complet avec sous-dossier
     }
 }
