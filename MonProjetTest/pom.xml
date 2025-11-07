@@ -56,7 +56,7 @@
                             <goal>install-file</goal>
                         </goals>
                         <configuration>
-                            <file>${project.basedir}/lib/framework-sprint-1.jar</file>
+                            <file>${project.basedir}/WEB-INF/lib/framework-sprint-1.jar</file>
                             <groupId>itu.framework</groupId>
                             <artifactId>framework-sprint</artifactId>
                             <version>1</version>

@@ -5,6 +5,18 @@
                              http://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
          version="5.0">
 
+    <!-- Scan automatique de tous les packages dans src/main/java -->
+    <context-param>
+        <param-name>packagesToScan</param-name>
+        <param-value></param-value>
+    </context-param>
+
+    <!-- Répertoire de base pour les vues (JSP, HTML, etc.) -->
+    <context-param>
+        <param-name>viewPath</param-name>
+        <param-value>/templates/</param-value>
+    </context-param>
+
     <servlet>
         <servlet-name>FrontServlet</servlet-name>
         <servlet-class>itu.framework.servlet.FrontServlet</servlet-class>
