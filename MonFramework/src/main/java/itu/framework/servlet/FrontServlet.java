@@ -56,12 +56,23 @@ public class FrontServlet extends HttpServlet {
             Method method = urlMapping.get(url);
             
             if (method != null) {
-                // Récupérer la classe du contrôleur
-                Class<?> controllerClass = method.getDeclaringClass();
-                
-                // Afficher uniquement le contrôleur et la méthode
-                resp.getWriter().write("<p>Contrôleur : " + controllerClass.getSimpleName() + "</p>");
-                resp.getWriter().write("<p>Méthode : " + method.getName() + "</p>");
+                try {
+                    // Récupérer la classe du contrôleur
+                    Class<?> controllerClass = method.getDeclaringClass();
+                    
+                    // Créer une instance du contrôleur
+                    Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
+                    
+                    // Invoquer la méthode
+                    Object result = method.invoke(controllerInstance);
+                    
+                    // Afficher le résultat
+                    resp.getWriter().write(result != null ? result.toString() : "");
+                    
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    resp.getWriter().write("<p style='color:red;'>Erreur lors de l'exécution : " + e.getMessage() + "</p>");
+                }
             } else {
                 // Aucun mapping trouvé
                 resp.getWriter().write("<p>Aucun mapping trouvé pour cette URL</p>");

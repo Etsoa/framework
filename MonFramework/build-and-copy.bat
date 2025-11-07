@@ -1,4 +1,3 @@
-REM Compile le projet et génère le jar
 call mvn clean install
 if errorlevel 1 exit /b 1
 
