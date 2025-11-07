@@ -1,2 +1,4 @@
 itu\framework\annotations\MyURL.class
 itu\framework\servlet\FrontServlet.class
+itu\framework\annotations\MyController.class
+itu\framework\util\ControllerScanner.class

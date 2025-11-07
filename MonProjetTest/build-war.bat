@@ -7,6 +7,8 @@ set SRC_DIR=%~dp0
 set TMP_DIR=%SRC_DIR%war-tmp
 set TOMCAT_WEBAPPS=C:\Program Files\Apache Software Foundation\Tomcat 11.0\webapps
 
+call mvn clean compile
+
 echo Nettoyage du dossier temporaire...
 if exist "%TMP_DIR%" rmdir /s /q "%TMP_DIR%"
 
@@ -15,10 +17,8 @@ mkdir "%TMP_DIR%"
 
 echo Copie des fichiers nécessaires...
 xcopy "%SRC_DIR%WEB-INF" "%TMP_DIR%\WEB-INF" /E /I /Y
-
-:: Ajoutez ici d'autres dossiers/fichiers à inclure dans le WAR si besoin
-:: Par exemple, pour inclure un dossier 'static' :
-:: xcopy "%SRC_DIR%static" "%TMP_DIR%\static" /E /I /Y
+xcopy "%SRC_DIR%target\classes" "%TMP_DIR%\WEB-INF\classes" /E /I /Y
+xcopy "%SRC_DIR%src\main\resources\templates" "%TMP_DIR%" /E /I /Y
 
 echo Suppression ancien WAR...
 if exist "%SRC_DIR%%WAR_NAME%" del "%SRC_DIR%%WAR_NAME%"

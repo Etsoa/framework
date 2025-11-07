@@ -1,6 +1,6 @@
 REM Compile le projet et génère le jar
-call mvn clean package
+call mvn clean install
 if errorlevel 1 exit /b 1
 
-REM Copier le jar généré vers ../framework-test/lib/
+REM Copier le jar généré vers ../MonProjetTest/WEB-INF/lib/
 copy target\framework-sprint-1.jar ..\MonProjetTest\WEB-INF\lib\
