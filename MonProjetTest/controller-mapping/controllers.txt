@@ -1,6 +1,0 @@
-=== MAPPING DES CONTROLEURS ===
-Date: Fri Oct 31 15:33:17 EAT 2025
-
-Controller trouvé: controller.ControllerTest (value: Test)
-
-=== FIN DU MAPPING ===

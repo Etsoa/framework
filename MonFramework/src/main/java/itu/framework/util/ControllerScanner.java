@@ -1,37 +1,45 @@
 package itu.framework.util;
 
 import java.io.File;
-import java.io.FileWriter;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 
 import itu.framework.annotations.MyController;
+import itu.framework.annotations.MyURL;
+import jakarta.servlet.ServletContext;
 
 public class ControllerScanner {
     
-    public static void scanAndSaveControllers() {
-        List<String> controllerInfo = new ArrayList<>();
+    public static Map<String, Method> scanControllers(ServletContext servletContext) {
+        Map<String, Method> urlMapping = new HashMap<>();
+        
+        System.out.println("=== Début du scan des contrôleurs ===");
         
         try {
-            // Scanner directement le répertoire target/classes du projet courant
-            // On suppose que le projet suit la structure Maven standard
-            String userDir = System.getProperty("user.dir");
-            File classesDir = new File(userDir, "target/classes");
+            // Obtenir le chemin réel des classes depuis le ServletContext
+            String classesPath = servletContext.getRealPath("/WEB-INF/classes");
+            System.out.println("Classes path: " + classesPath);
+            
+            File classesDir = new File(classesPath);
+            System.out.println("Existe: " + classesDir.exists());
             
             if (classesDir.exists() && classesDir.isDirectory()) {
-                findClasses(classesDir, "", controllerInfo);
+                findClasses(classesDir, "", urlMapping);
+            } else {
+                System.out.println("ERREUR: Le répertoire des classes n'existe pas!");
             }
             
-            // Sauvegarder dans un fichier
-            saveToFile(controllerInfo);
+            System.out.println("Nombre d'URLs mappées: " + urlMapping.size());
             
         } catch (Exception e) {
             e.printStackTrace();
         }
+        
+        return urlMapping;
     }
 
-    private static void findClasses(File directory, String packageName, List<String> controllerInfo) {
+    private static void findClasses(File directory, String packageName, Map<String, Method> urlMapping) {
         if (!directory.exists()) {
             return;
         }
@@ -41,50 +49,30 @@ public class ControllerScanner {
         for (File file : files) {
             if (file.isDirectory()) {
                 String newPackage = packageName.isEmpty() ? file.getName() : packageName + "." + file.getName();
-                findClasses(file, newPackage, controllerInfo);
+                findClasses(file, newPackage, urlMapping);
             } else if (file.getName().endsWith(".class")) {
                 String className = packageName + '.' + file.getName().substring(0, file.getName().length() - 6);
+                System.out.println("Classe trouvée: " + className);
                 try {
                     Class<?> clazz = Class.forName(className);
                     if (clazz.isAnnotationPresent(MyController.class)) {
-                        MyController controllerAnn = clazz.getAnnotation(MyController.class);
-                        String controllerLine = "Controller trouvé: " + clazz.getName() + " (value: " + controllerAnn.value() + ")";
-                        controllerInfo.add(controllerLine);
+                        System.out.println("✓ Contrôleur: " + clazz.getSimpleName());
+                        
+                        // Scanner les méthodes de cette classe pour @MyURL
+                        Method[] methods = clazz.getDeclaredMethods();
+                        for (Method method : methods) {
+                            if (method.isAnnotationPresent(MyURL.class)) {
+                                MyURL urlAnn = method.getAnnotation(MyURL.class);
+                                String url = urlAnn.value();
+                                urlMapping.put(url, method);
+                                System.out.println("  ✓ Mapping: " + url + " -> " + method.getName());
+                            }
+                        }
                     }
                 } catch (Exception e) {
-                    // Ignorer les classes qui ne peuvent pas être chargées
+                    System.out.println("  ✗ Erreur: " + e.getMessage());
                 }
             }
-        }
-    }
-
-    private static void saveToFile(List<String> controllerInfo) {
-        try {
-            // Créer le répertoire s'il n'existe pas
-            File outputDir = new File("controller-mapping");
-            if (!outputDir.exists()) {
-                outputDir.mkdirs();
-            }
-            
-            // Sauvegarder dans un fichier
-            File outputFile = new File(outputDir, "controllers.txt");
-            try (PrintWriter writer = new PrintWriter(new FileWriter(outputFile))) {
-                writer.println("=== MAPPING DES CONTROLEURS ===");
-                writer.println("Date: " + new java.util.Date());
-                writer.println();
-                
-                for (String line : controllerInfo) {
-                    writer.println(line);
-                }
-                
-                writer.println();
-                writer.println("=== FIN DU MAPPING ===");
-            }
-            
-            System.out.println("Mapping des contrôleurs sauvegardé dans: " + outputFile.getAbsolutePath());
-            
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 }
