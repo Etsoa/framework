@@ -32,110 +32,113 @@ public class FrontServlet extends HttpServlet {
 
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-        resp.setContentType("text/html");
-        
+        resp.setContentType("text/html;charset=UTF-8");
+
         String requestURI = req.getRequestURI();
         String contextPath = req.getContextPath();
         String url = requestURI.substring(contextPath.length());
-        
+
         @SuppressWarnings("unchecked")
         Map<String, Method> urlMapping = (Map<String, Method>) getServletContext().getAttribute("urlMapping");
-        
-        if (urlMapping == null) {
-            resp.getWriter().write("<p>Erreur: urlMapping non initialisé</p>");
-            return;
-        }
-        
-        Method method = null;
-        Map<String, String> pathParams = null;
-        
-        // Cherche un mapping exact
-        method = urlMapping.get(url);
-        
-        // Si pas trouvé, cherche les URLs paramétrées
-        if (method == null) {
-            for (String pattern : urlMapping.keySet()) {
-                if (pattern.contains("{") && pattern.contains("}")) {
-                    pathParams = matchParameterizedUrl(pattern, url);
-                    if (pathParams != null) {
-                        method = urlMapping.get(pattern);
-                        break;
+
+        if (urlMapping != null) {
+            Method method = null;
+            Map<String, String> pathParams = null;
+
+            // Chercher correspondance exacte
+            method = urlMapping.get(url);
+
+            // Si pas de correspondance exacte, chercher URLs paramétrées
+            if (method == null) {
+                for (String pattern : urlMapping.keySet()) {
+                    if (pattern.contains("{") && pattern.contains("}")) {
+                        pathParams = matchParameterizedUrl(pattern, url);
+                        if (pathParams != null) {
+                            method = urlMapping.get(pattern);
+                            break;
+                        }
                     }
                 }
             }
-        }
-        
-        if (method == null) {
-            resp.getWriter().write("<p>Aucun mapping trouvé pour cette URL</p>");
-            return;
-        }
-        
-        try {
-            Class<?> controllerClass = method.getDeclaringClass();
-            Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
-            
-            java.lang.reflect.Parameter[] methodParams = method.getParameters();
-            Object[] args = new Object[methodParams.length];
-            
-            for (int i = 0; i < methodParams.length; i++) {
-                java.lang.reflect.Parameter param = methodParams[i];
-                String value = null;
-                
-                // Vérifie @MyParam
-                if (param.isAnnotationPresent(itu.framework.annotations.MyParam.class)) {
-                    String paramName = param.getAnnotation(itu.framework.annotations.MyParam.class).value();
-                    value = req.getParameter(paramName);
-                }
-                
-                // Vérifie les paramètres de l'URL si pas trouvé
-                if (value == null && pathParams != null && pathParams.containsKey(param.getName())) {
-                    value = pathParams.get(param.getName());
-                }
-                
-                // Conversion selon le type
-                Class<?> paramType = param.getType();
-                if (value != null) {
-                    if (paramType == Integer.class || paramType == int.class) {
-                        args[i] = Integer.parseInt(value);
-                    } else if (paramType == Long.class || paramType == long.class) {
-                        args[i] = Long.parseLong(value);
-                    } else if (paramType == Double.class || paramType == double.class) {
-                        args[i] = Double.parseDouble(value);
-                    } else if (paramType == Boolean.class || paramType == boolean.class) {
-                        args[i] = Boolean.parseBoolean(value);
-                    } else {
-                        args[i] = value;
+
+            if (method != null) {
+                try {
+                    Class<?> controllerClass = method.getDeclaringClass();
+                    Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
+
+                    // Préparer les arguments de la méthode
+                    java.lang.reflect.Parameter[] methodParams = method.getParameters();
+                    Object[] args = new Object[methodParams.length];
+
+                    for (int i = 0; i < methodParams.length; i++) {
+                        java.lang.reflect.Parameter param = methodParams[i];
+                        String paramName = param.getName(); // vrai nom grâce à parameters=true
+                        Class<?> paramType = param.getType();
+                        String value = null;
+
+                        // D'abord vérifier paramètres dans URL
+                        if (pathParams != null && pathParams.containsKey(paramName)) {
+                            value = pathParams.get(paramName);
+                        }
+
+                        // Sinon, vérifier paramètres de requête
+                        if (value == null) {
+                            value = req.getParameter(paramName);
+                        }
+
+                        // Conversion en type approprié
+                        if (value != null) {
+                            if (paramType == Integer.class || paramType == int.class) {
+                                args[i] = Integer.parseInt(value);
+                            } else if (paramType == Long.class || paramType == long.class) {
+                                args[i] = Long.parseLong(value);
+                            } else if (paramType == Double.class || paramType == double.class) {
+                                args[i] = Double.parseDouble(value);
+                            } else if (paramType == Boolean.class || paramType == boolean.class) {
+                                args[i] = Boolean.parseBoolean(value);
+                            } else {
+                                args[i] = value; // String par défaut
+                            }
+                        } else {
+                            args[i] = null; // Valeur nulle si non fournie
+                        }
                     }
-                } else {
-                    args[i] = null; // valeur absente
+
+                    // Invocation de la méthode
+                    Object result = method.invoke(controllerInstance, args);
+
+                    // Gérer le résultat
+                    if (result instanceof ModelView mv) {
+                        String view = mv.getView();
+                        // Ajouter les données du ModelView dans la requête
+                        for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
+                            req.setAttribute(entry.getKey(), entry.getValue());
+                        }
+
+                        String viewPath = getServletContext().getInitParameter("viewPath");
+                        if (viewPath == null || viewPath.isEmpty()) viewPath = "/";
+
+                        req.getRequestDispatcher(viewPath + view).forward(req, resp);
+
+                    } else if (result instanceof String str) {
+                        resp.getWriter().write(str);
+                    } else if (result != null) {
+                        resp.getWriter().write(result.toString());
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    resp.getWriter().write("<p style='color:red;'>Erreur : " + e.getMessage() + "</p>");
                 }
+            } else {
+                resp.getWriter().write("<p>Aucun mapping trouvé pour cette URL</p>");
             }
-            
-            // Invocation de la méthode
-            Object result = method.invoke(controllerInstance, args);
-            
-            if (result instanceof ModelView) {
-                ModelView mv = (ModelView) result;
-                
-                // Ajout des données comme attributs de requête
-                for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
-                    req.setAttribute(entry.getKey(), entry.getValue());
-                }
-                
-                String viewPath = getServletContext().getInitParameter("viewPath");
-                if (viewPath == null || viewPath.isEmpty()) {
-                    viewPath = "/";
-                }
-                req.getRequestDispatcher(viewPath + mv.getView()).forward(req, resp);
-            } else if (result != null) {
-                resp.getWriter().write(result.toString());
-            }
-            
-        } catch (Exception e) {
-            e.printStackTrace();
-            resp.getWriter().write("<p style='color:red;'>Erreur : " + e.getMessage() + "</p>");
+
+        } else {
+            resp.getWriter().write("<p>Erreur : urlMapping non initialisé</p>");
         }
     }
+
 
     
     /**

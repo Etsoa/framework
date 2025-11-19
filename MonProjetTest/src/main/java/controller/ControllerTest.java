@@ -45,7 +45,7 @@ public class ControllerTest {
     }
 
     @MyURL(value = "/submit-form")
-    public ModelView submitForm(@MyParam("name") String name, @MyParam("age") Integer age) {
+    public ModelView submitForm(String name, Integer age) {
         ModelView mv = new ModelView("form-result.jsp");
         mv.addItem("name", name);
         mv.addItem("age", age);
