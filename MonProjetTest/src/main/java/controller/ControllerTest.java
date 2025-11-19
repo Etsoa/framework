@@ -29,4 +29,11 @@ public class ControllerTest {
     public ModelView showAdmin() {
         return new ModelView("admin/dashboard.jsp");  
     }
+
+    @MyURL(value = "/departement/{id}")
+    public ModelView getDepartementById(Integer id) {
+        ModelView mv = new ModelView("departement.jsp");
+        mv.addItem("id", id);
+        return mv;
+    }
 }
