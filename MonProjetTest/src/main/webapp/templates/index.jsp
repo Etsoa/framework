@@ -7,6 +7,9 @@
 <body>
     <h1>Framework MVC - Accueil</h1>
     <p>Bienvenue sur la page d'accueil !</p>
-    <p>Date: <%= new java.util.Date() %></p>
+    
+    <h2>Données depuis le contrôleur :</h2>
+    <p><strong>Message:</strong> ${message}</p>
+    <p><strong>Date:</strong> ${date}</p>
 </body>
 </html>
