@@ -42,13 +42,55 @@ public class FrontServlet extends HttpServlet {
         Map<String, Method> urlMapping = (Map<String, Method>) getServletContext().getAttribute("urlMapping");
         
         if (urlMapping != null) {
-            Method method = urlMapping.get(url);
+            Method method = null;
+            String[] urlParams = null;
+            
+            // First try exact match
+            method = urlMapping.get(url);
+            
+            // If no exact match, try parameterized URLs
+            if (method == null) {
+                for (String pattern : urlMapping.keySet()) {
+                    if (pattern.contains("{") && pattern.contains("}")) {
+                        urlParams = matchParameterizedUrl(pattern, url);
+                        if (urlParams != null) {
+                            method = urlMapping.get(pattern);
+                            break;
+                        }
+                    }
+                }
+            }
             
             if (method != null) {
                 try {
                     Class<?> controllerClass = method.getDeclaringClass();
                     Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
-                    Object result = method.invoke(controllerInstance);
+                    
+                    Object result;
+                    if (urlParams != null && method.getParameterCount() > 0) {
+                        Class<?>[] paramTypes = method.getParameterTypes();
+                        Object[] convertedParams = new Object[paramTypes.length];
+
+                        for (int i = 0; i < paramTypes.length; i++) {
+                            String value = urlParams[i];
+                            Class<?> targetType = paramTypes[i];
+
+                            if (targetType == Integer.class || targetType == int.class) {
+                                convertedParams[i] = Integer.parseInt(value);
+                            } else if (targetType == Long.class || targetType == long.class) {
+                                convertedParams[i] = Long.parseLong(value);
+                            } else if (targetType == Double.class || targetType == double.class) {
+                                convertedParams[i] = Double.parseDouble(value);
+                            } else {
+                                // default -> String
+                                convertedParams[i] = value;
+                            }
+                        }
+
+                        result = method.invoke(controllerInstance, convertedParams);
+                    } else {
+                        result = method.invoke(controllerInstance);
+                    }
                     
                     if (result instanceof ModelView) {
                         // Si c'est un ModelView, faire un RequestDispatcher vers la JSP
@@ -87,5 +129,49 @@ public class FrontServlet extends HttpServlet {
         } else {
             resp.getWriter().write("<p>Erreur: urlMapping non initialisé</p>");
         }
+    }
+    
+    /**
+     * Match a parameterized URL pattern against a request URL
+     * @param pattern The pattern like "/departement/{id}"
+     * @param url The actual URL like "/departement/123"
+     * @return Array of extracted parameters, or null if no match
+     */
+    private String[] matchParameterizedUrl(String pattern, String url) {
+        String[] patternParts = pattern.split("/");
+        String[] urlParts = url.split("/");
+        
+        if (patternParts.length != urlParts.length) {
+            return null;
+        }
+        
+        String[] params = new String[countParameters(pattern)];
+        int paramIndex = 0;
+        
+        for (int i = 0; i < patternParts.length; i++) {
+            String patternPart = patternParts[i];
+            String urlPart = urlParts[i];
+            
+            if (patternPart.startsWith("{") && patternPart.endsWith("}")) {
+                // This is a parameter
+                params[paramIndex++] = urlPart;
+            } else if (!patternPart.equals(urlPart)) {
+                // Static parts don't match
+                return null;
+            }
+        }
+        
+        return params;
+    }
+    
+    /**
+     * Count the number of parameters in a URL pattern
+     */
+    private int countParameters(String pattern) {
+        int count = 0;
+        for (char c : pattern.toCharArray()) {
+            if (c == '{') count++;
+        }
+        return count;
     }
 }
