@@ -55,6 +55,11 @@ public class FrontServlet extends HttpServlet {
                         ModelView modelView = (ModelView) result;
                         String view = modelView.getView();
                         
+                        // Ajouter les données du ModelView comme attributs de requête
+                        for (Map.Entry<String, Object> entry : modelView.getData().entrySet()) {
+                            req.setAttribute(entry.getKey(), entry.getValue());
+                        }
+                        
                         // Récupérer le chemin de base des vues depuis web.xml
                         String viewPath = getServletContext().getInitParameter("viewPath");
                         if (viewPath == null || viewPath.isEmpty()) {

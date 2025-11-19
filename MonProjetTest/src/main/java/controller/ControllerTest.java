@@ -19,7 +19,10 @@ public class ControllerTest {
 
     @MyURL(value = "/page")
     public ModelView showPage() {
-        return new ModelView("index.jsp");  
+        ModelView mv = new ModelView("index.jsp");
+        mv.addItem("message", "Hello depuis le contrôleur !");
+        mv.addItem("date", new java.util.Date());
+        return mv;
     }
 
     @MyURL(value = "/admin")
