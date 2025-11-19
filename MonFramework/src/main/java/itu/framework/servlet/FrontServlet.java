@@ -32,93 +32,100 @@ public class FrontServlet extends HttpServlet {
 
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-        resp.setContentType("text/html");
-        
+        resp.setContentType("text/html;charset=UTF-8");
+
         String requestURI = req.getRequestURI();
         String contextPath = req.getContextPath();
         String url = requestURI.substring(contextPath.length());
-        
+
         @SuppressWarnings("unchecked")
         Map<String, Method> urlMapping = (Map<String, Method>) getServletContext().getAttribute("urlMapping");
-        
+
         if (urlMapping != null) {
             Method method = null;
-            String[] urlParams = null;
-            
-            // First try exact match
+            Map<String, String> pathParams = null;
+
+            // Chercher correspondance exacte
             method = urlMapping.get(url);
-            
-            // If no exact match, try parameterized URLs
+
+            // Si pas de correspondance exacte, chercher URLs paramétrées
             if (method == null) {
                 for (String pattern : urlMapping.keySet()) {
                     if (pattern.contains("{") && pattern.contains("}")) {
-                        urlParams = matchParameterizedUrl(pattern, url);
-                        if (urlParams != null) {
+                        pathParams = matchParameterizedUrl(pattern, url);
+                        if (pathParams != null) {
                             method = urlMapping.get(pattern);
                             break;
                         }
                     }
                 }
             }
-            
+
             if (method != null) {
                 try {
                     Class<?> controllerClass = method.getDeclaringClass();
                     Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
-                    
-                    Object result;
-                    if (urlParams != null && method.getParameterCount() > 0) {
-                        Class<?>[] paramTypes = method.getParameterTypes();
-                        Object[] convertedParams = new Object[paramTypes.length];
 
-                        for (int i = 0; i < paramTypes.length; i++) {
-                            String value = urlParams[i];
-                            Class<?> targetType = paramTypes[i];
+                    // Préparer les arguments de la méthode
+                    java.lang.reflect.Parameter[] methodParams = method.getParameters();
+                    Object[] args = new Object[methodParams.length];
 
-                            if (targetType == Integer.class || targetType == int.class) {
-                                convertedParams[i] = Integer.parseInt(value);
-                            } else if (targetType == Long.class || targetType == long.class) {
-                                convertedParams[i] = Long.parseLong(value);
-                            } else if (targetType == Double.class || targetType == double.class) {
-                                convertedParams[i] = Double.parseDouble(value);
-                            } else {
-                                // default -> String
-                                convertedParams[i] = value;
-                            }
+                    for (int i = 0; i < methodParams.length; i++) {
+                        java.lang.reflect.Parameter param = methodParams[i];
+                        String paramName = param.getName(); // vrai nom grâce à parameters=true
+                        Class<?> paramType = param.getType();
+                        String value = null;
+
+                        // D'abord vérifier paramètres dans URL
+                        if (pathParams != null && pathParams.containsKey(paramName)) {
+                            value = pathParams.get(paramName);
                         }
 
-                        result = method.invoke(controllerInstance, convertedParams);
-                    } else {
-                        result = method.invoke(controllerInstance);
+                        // Sinon, vérifier paramètres de requête
+                        if (value == null) {
+                            value = req.getParameter(paramName);
+                        }
+
+                        // Conversion en type approprié
+                        if (value != null) {
+                            if (paramType == Integer.class || paramType == int.class) {
+                                args[i] = Integer.parseInt(value);
+                            } else if (paramType == Long.class || paramType == long.class) {
+                                args[i] = Long.parseLong(value);
+                            } else if (paramType == Double.class || paramType == double.class) {
+                                args[i] = Double.parseDouble(value);
+                            } else if (paramType == Boolean.class || paramType == boolean.class) {
+                                args[i] = Boolean.parseBoolean(value);
+                            } else {
+                                args[i] = value; // String par défaut
+                            }
+                        } else {
+                            args[i] = null; // Valeur nulle si non fournie
+                        }
                     }
-                    
-                    if (result instanceof ModelView) {
-                        // Si c'est un ModelView, faire un RequestDispatcher vers la JSP
-                        ModelView modelView = (ModelView) result;
-                        String view = modelView.getView();
-                        
-                        // Ajouter les données du ModelView comme attributs de requête
-                        for (Map.Entry<String, Object> entry : modelView.getData().entrySet()) {
+
+                    // Invocation de la méthode
+                    Object result = method.invoke(controllerInstance, args);
+
+                    // Gérer le résultat
+                    if (result instanceof ModelView mv) {
+                        String view = mv.getView();
+                        // Ajouter les données du ModelView dans la requête
+                        for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
                             req.setAttribute(entry.getKey(), entry.getValue());
                         }
-                        
-                        // Récupérer le chemin de base des vues depuis web.xml
+
                         String viewPath = getServletContext().getInitParameter("viewPath");
-                        if (viewPath == null || viewPath.isEmpty()) {
-                            viewPath = "/";
-                        }
-                        
-                        // Construire le chemin complet de la vue
-                        String fullViewPath = viewPath + view;
-                        req.getRequestDispatcher(fullViewPath).forward(req, resp);
-                    } else if (result instanceof String) {
-                        // Si c'est un String, l'afficher directement
-                        resp.getWriter().write(result.toString());
+                        if (viewPath == null || viewPath.isEmpty()) viewPath = "/";
+
+                        req.getRequestDispatcher(viewPath + view).forward(req, resp);
+
+                    } else if (result instanceof String str) {
+                        resp.getWriter().write(str);
                     } else if (result != null) {
-                        // Autres types, afficher avec toString()
                         resp.getWriter().write(result.toString());
                     }
-                    
+
                 } catch (Exception e) {
                     e.printStackTrace();
                     resp.getWriter().write("<p style='color:red;'>Erreur : " + e.getMessage() + "</p>");
@@ -126,18 +133,21 @@ public class FrontServlet extends HttpServlet {
             } else {
                 resp.getWriter().write("<p>Aucun mapping trouvé pour cette URL</p>");
             }
+
         } else {
-            resp.getWriter().write("<p>Erreur: urlMapping non initialisé</p>");
+            resp.getWriter().write("<p>Erreur : urlMapping non initialisé</p>");
         }
     }
+
+
     
     /**
      * Match a parameterized URL pattern against a request URL
      * @param pattern The pattern like "/departement/{id}"
      * @param url The actual URL like "/departement/123"
-     * @return Array of extracted parameters, or null if no match
+     * @return Map of parameter names to values, or null if no match
      */
-    private String[] matchParameterizedUrl(String pattern, String url) {
+    private Map<String, String> matchParameterizedUrl(String pattern, String url) {
         String[] patternParts = pattern.split("/");
         String[] urlParts = url.split("/");
         
@@ -145,8 +155,7 @@ public class FrontServlet extends HttpServlet {
             return null;
         }
         
-        String[] params = new String[countParameters(pattern)];
-        int paramIndex = 0;
+        Map<String, String> params = new java.util.HashMap<>();
         
         for (int i = 0; i < patternParts.length; i++) {
             String patternPart = patternParts[i];
@@ -154,7 +163,8 @@ public class FrontServlet extends HttpServlet {
             
             if (patternPart.startsWith("{") && patternPart.endsWith("}")) {
                 // This is a parameter
-                params[paramIndex++] = urlPart;
+                String paramName = patternPart.substring(1, patternPart.length() - 1);
+                params.put(paramName, urlPart);
             } else if (!patternPart.equals(urlPart)) {
                 // Static parts don't match
                 return null;
@@ -162,16 +172,5 @@ public class FrontServlet extends HttpServlet {
         }
         
         return params;
-    }
-    
-    /**
-     * Count the number of parameters in a URL pattern
-     */
-    private int countParameters(String pattern) {
-        int count = 0;
-        for (char c : pattern.toCharArray()) {
-            if (c == '{') count++;
-        }
-        return count;
     }
 }
