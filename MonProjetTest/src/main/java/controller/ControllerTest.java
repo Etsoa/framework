@@ -5,7 +5,6 @@ import itu.framework.annotations.MyURL;
 import itu.framework.annotations.MyParam;
 import itu.framework.model.ModelView;
 
-
 @MyController(value = "Test")
 public class ControllerTest {
     
@@ -45,7 +44,7 @@ public class ControllerTest {
     }
 
     @MyURL(value = "/submit-form")
-    public ModelView submitForm(String name, Integer age) {
+    public ModelView submitForm(@MyParam("name") String name, @MyParam("age") Integer age) {
         ModelView mv = new ModelView("form-result.jsp");
         mv.addItem("name", name);
         mv.addItem("age", age);
