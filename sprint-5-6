@@ -1,0 +1,16 @@
+sprint-5
+mandefa donne avy any am controller makany am vue 
+rehefa chaine de caractere ny valeur de retour dia printwritter 
+dans modelview creer attribut data (map) cle(nom du model),valeur (object)
+fonction dans modelview addModel
+
+sprint-6
+donne avy any am vue no makany am controller
+3 ter apres sprint 5 (mety am acollade)
+detail etudiant (etudiant/{id})
+tokony capable mamaly an io tsy misy mandefa donne aloha 
+6 tsotra (mitovy anarana)
+jerena raha misy argument ila y methode antsoina de jerna oe inona ny anarany de raha misy mitovy anarana amin iny ilay requestparam de tode apetraka amininy le valeur
+raha tsy mitovy le izy de mapiasa request param (amboarina le annotation requestparam)
+
+cas 3 farany amin url no angalana anle valeur ohatra etudiant/{id}

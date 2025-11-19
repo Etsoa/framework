@@ -16,15 +16,8 @@ public class FrontServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        System.out.println("=== FrontServlet init START ===");
         Map<String, Method> urlMapping = ControllerScanner.scanControllers(getServletContext());
-        System.out.println("URLs mappées: " + urlMapping.size());
-        for (String url : urlMapping.keySet()) {
-            Method m = urlMapping.get(url);
-            System.out.println("  " + url + " -> " + m.getDeclaringClass().getSimpleName() + "." + m.getName());
-        }
         getServletContext().setAttribute("urlMapping", urlMapping);
-        System.out.println("=== FrontServlet init END ===");
     }
     
     @Override
@@ -45,16 +38,8 @@ public class FrontServlet extends HttpServlet {
         String contextPath = req.getContextPath();
         String url = requestURI.substring(contextPath.length());
         
-        System.out.println("URL demandée: '" + url + "'");
-        
         @SuppressWarnings("unchecked")
         Map<String, Method> urlMapping = (Map<String, Method>) getServletContext().getAttribute("urlMapping");
-        
-        System.out.println("urlMapping null? " + (urlMapping == null));
-        if (urlMapping != null) {
-            System.out.println("urlMapping size: " + urlMapping.size());
-            System.out.println("Contains key '" + url + "'? " + urlMapping.containsKey(url));
-        }
         
         if (urlMapping != null) {
             Method method = urlMapping.get(url);
@@ -78,7 +63,6 @@ public class FrontServlet extends HttpServlet {
                         
                         // Construire le chemin complet de la vue
                         String fullViewPath = viewPath + view;
-                        System.out.println("Forward vers: " + fullViewPath);
                         req.getRequestDispatcher(fullViewPath).forward(req, resp);
                     } else if (result instanceof String) {
                         // Si c'est un String, l'afficher directement
@@ -93,7 +77,7 @@ public class FrontServlet extends HttpServlet {
                     resp.getWriter().write("<p style='color:red;'>Erreur : " + e.getMessage() + "</p>");
                 }
             } else {
-                resp.getWriter().write("<p>Aucun mapping trouvé pour cette URL: '" + url + "'</p>");
+                resp.getWriter().write("<p>Aucun mapping trouvé pour cette URL</p>");
             }
         } else {
             resp.getWriter().write("<p>Erreur: urlMapping non initialisé</p>");

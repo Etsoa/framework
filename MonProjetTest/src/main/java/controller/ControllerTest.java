@@ -19,11 +19,11 @@ public class ControllerTest {
 
     @MyURL(value = "/page")
     public ModelView showPage() {
-        return new ModelView("index.jsp");  // Chemin complet depuis webapp
+        return new ModelView("index.jsp");  
     }
 
     @MyURL(value = "/admin")
     public ModelView showAdmin() {
-        return new ModelView("admin/dashboard.jsp");  // Chemin complet avec sous-dossier
+        return new ModelView("admin/dashboard.jsp");  
     }
 }
