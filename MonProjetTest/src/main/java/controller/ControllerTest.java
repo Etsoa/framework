@@ -2,7 +2,9 @@ package controller;
 
 import itu.framework.annotations.MyController;
 import itu.framework.annotations.MyURL;
+import itu.framework.annotations.MyParam;
 import itu.framework.model.ModelView;
+
 
 @MyController(value = "Test")
 public class ControllerTest {
@@ -34,6 +36,19 @@ public class ControllerTest {
     public ModelView getDepartementById(Integer id) {
         ModelView mv = new ModelView("departement.jsp");
         mv.addItem("id", id);
+        return mv;
+    }
+
+    @MyURL(value = "/form")
+    public ModelView showForm() {
+        return new ModelView("form.jsp");
+    }
+
+    @MyURL(value = "/submit-form")
+    public ModelView submitForm(@MyParam("name") String name, @MyParam("age") Integer age) {
+        ModelView mv = new ModelView("form-result.jsp");
+        mv.addItem("name", name);
+        mv.addItem("age", age);
         return mv;
     }
 }

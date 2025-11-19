@@ -41,103 +41,110 @@ public class FrontServlet extends HttpServlet {
         @SuppressWarnings("unchecked")
         Map<String, Method> urlMapping = (Map<String, Method>) getServletContext().getAttribute("urlMapping");
         
-        if (urlMapping != null) {
-            Method method = null;
-            String[] urlParams = null;
-            
-            // First try exact match
-            method = urlMapping.get(url);
-            
-            // If no exact match, try parameterized URLs
-            if (method == null) {
-                for (String pattern : urlMapping.keySet()) {
-                    if (pattern.contains("{") && pattern.contains("}")) {
-                        urlParams = matchParameterizedUrl(pattern, url);
-                        if (urlParams != null) {
-                            method = urlMapping.get(pattern);
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            if (method != null) {
-                try {
-                    Class<?> controllerClass = method.getDeclaringClass();
-                    Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
-                    
-                    Object result;
-                    if (urlParams != null && method.getParameterCount() > 0) {
-                        Class<?>[] paramTypes = method.getParameterTypes();
-                        Object[] convertedParams = new Object[paramTypes.length];
-
-                        for (int i = 0; i < paramTypes.length; i++) {
-                            String value = urlParams[i];
-                            Class<?> targetType = paramTypes[i];
-
-                            if (targetType == Integer.class || targetType == int.class) {
-                                convertedParams[i] = Integer.parseInt(value);
-                            } else if (targetType == Long.class || targetType == long.class) {
-                                convertedParams[i] = Long.parseLong(value);
-                            } else if (targetType == Double.class || targetType == double.class) {
-                                convertedParams[i] = Double.parseDouble(value);
-                            } else {
-                                // default -> String
-                                convertedParams[i] = value;
-                            }
-                        }
-
-                        result = method.invoke(controllerInstance, convertedParams);
-                    } else {
-                        result = method.invoke(controllerInstance);
-                    }
-                    
-                    if (result instanceof ModelView) {
-                        // Si c'est un ModelView, faire un RequestDispatcher vers la JSP
-                        ModelView modelView = (ModelView) result;
-                        String view = modelView.getView();
-                        
-                        // Ajouter les données du ModelView comme attributs de requête
-                        for (Map.Entry<String, Object> entry : modelView.getData().entrySet()) {
-                            req.setAttribute(entry.getKey(), entry.getValue());
-                        }
-                        
-                        // Récupérer le chemin de base des vues depuis web.xml
-                        String viewPath = getServletContext().getInitParameter("viewPath");
-                        if (viewPath == null || viewPath.isEmpty()) {
-                            viewPath = "/";
-                        }
-                        
-                        // Construire le chemin complet de la vue
-                        String fullViewPath = viewPath + view;
-                        req.getRequestDispatcher(fullViewPath).forward(req, resp);
-                    } else if (result instanceof String) {
-                        // Si c'est un String, l'afficher directement
-                        resp.getWriter().write(result.toString());
-                    } else if (result != null) {
-                        // Autres types, afficher avec toString()
-                        resp.getWriter().write(result.toString());
-                    }
-                    
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    resp.getWriter().write("<p style='color:red;'>Erreur : " + e.getMessage() + "</p>");
-                }
-            } else {
-                resp.getWriter().write("<p>Aucun mapping trouvé pour cette URL</p>");
-            }
-        } else {
+        if (urlMapping == null) {
             resp.getWriter().write("<p>Erreur: urlMapping non initialisé</p>");
+            return;
+        }
+        
+        Method method = null;
+        Map<String, String> pathParams = null;
+        
+        // Cherche un mapping exact
+        method = urlMapping.get(url);
+        
+        // Si pas trouvé, cherche les URLs paramétrées
+        if (method == null) {
+            for (String pattern : urlMapping.keySet()) {
+                if (pattern.contains("{") && pattern.contains("}")) {
+                    pathParams = matchParameterizedUrl(pattern, url);
+                    if (pathParams != null) {
+                        method = urlMapping.get(pattern);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (method == null) {
+            resp.getWriter().write("<p>Aucun mapping trouvé pour cette URL</p>");
+            return;
+        }
+        
+        try {
+            Class<?> controllerClass = method.getDeclaringClass();
+            Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
+            
+            java.lang.reflect.Parameter[] methodParams = method.getParameters();
+            Object[] args = new Object[methodParams.length];
+            
+            for (int i = 0; i < methodParams.length; i++) {
+                java.lang.reflect.Parameter param = methodParams[i];
+                String value = null;
+                
+                // Vérifie @MyParam
+                if (param.isAnnotationPresent(itu.framework.annotations.MyParam.class)) {
+                    String paramName = param.getAnnotation(itu.framework.annotations.MyParam.class).value();
+                    value = req.getParameter(paramName);
+                }
+                
+                // Vérifie les paramètres de l'URL si pas trouvé
+                if (value == null && pathParams != null && pathParams.containsKey(param.getName())) {
+                    value = pathParams.get(param.getName());
+                }
+                
+                // Conversion selon le type
+                Class<?> paramType = param.getType();
+                if (value != null) {
+                    if (paramType == Integer.class || paramType == int.class) {
+                        args[i] = Integer.parseInt(value);
+                    } else if (paramType == Long.class || paramType == long.class) {
+                        args[i] = Long.parseLong(value);
+                    } else if (paramType == Double.class || paramType == double.class) {
+                        args[i] = Double.parseDouble(value);
+                    } else if (paramType == Boolean.class || paramType == boolean.class) {
+                        args[i] = Boolean.parseBoolean(value);
+                    } else {
+                        args[i] = value;
+                    }
+                } else {
+                    args[i] = null; // valeur absente
+                }
+            }
+            
+            // Invocation de la méthode
+            Object result = method.invoke(controllerInstance, args);
+            
+            if (result instanceof ModelView) {
+                ModelView mv = (ModelView) result;
+                
+                // Ajout des données comme attributs de requête
+                for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
+                    req.setAttribute(entry.getKey(), entry.getValue());
+                }
+                
+                String viewPath = getServletContext().getInitParameter("viewPath");
+                if (viewPath == null || viewPath.isEmpty()) {
+                    viewPath = "/";
+                }
+                req.getRequestDispatcher(viewPath + mv.getView()).forward(req, resp);
+            } else if (result != null) {
+                resp.getWriter().write(result.toString());
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            resp.getWriter().write("<p style='color:red;'>Erreur : " + e.getMessage() + "</p>");
         }
     }
+
     
     /**
      * Match a parameterized URL pattern against a request URL
      * @param pattern The pattern like "/departement/{id}"
      * @param url The actual URL like "/departement/123"
-     * @return Array of extracted parameters, or null if no match
+     * @return Map of parameter names to values, or null if no match
      */
-    private String[] matchParameterizedUrl(String pattern, String url) {
+    private Map<String, String> matchParameterizedUrl(String pattern, String url) {
         String[] patternParts = pattern.split("/");
         String[] urlParts = url.split("/");
         
@@ -145,8 +152,7 @@ public class FrontServlet extends HttpServlet {
             return null;
         }
         
-        String[] params = new String[countParameters(pattern)];
-        int paramIndex = 0;
+        Map<String, String> params = new java.util.HashMap<>();
         
         for (int i = 0; i < patternParts.length; i++) {
             String patternPart = patternParts[i];
@@ -154,7 +160,8 @@ public class FrontServlet extends HttpServlet {
             
             if (patternPart.startsWith("{") && patternPart.endsWith("}")) {
                 // This is a parameter
-                params[paramIndex++] = urlPart;
+                String paramName = patternPart.substring(1, patternPart.length() - 1);
+                params.put(paramName, urlPart);
             } else if (!patternPart.equals(urlPart)) {
                 // Static parts don't match
                 return null;
@@ -162,16 +169,5 @@ public class FrontServlet extends HttpServlet {
         }
         
         return params;
-    }
-    
-    /**
-     * Count the number of parameters in a URL pattern
-     */
-    private int countParameters(String pattern) {
-        int count = 0;
-        for (char c : pattern.toCharArray()) {
-            if (c == '{') count++;
-        }
-        return count;
     }
 }
