@@ -7,7 +7,7 @@
 </head>
 <body>
     <h1>Formulaire de Test</h1>
-    <form action="${pageContext.request.contextPath}/submit-form" method="post">
+    <form action="${pageContext.request.contextPath}/form" method="post">
         <div>
             <label for="name">Nom:</label>
             <input type="text" id="name" name="name" value="Blabla" required>
