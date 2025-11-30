@@ -11,13 +11,13 @@ import itu.framework.annotations.MyURL;
 import jakarta.servlet.ServletContext;
 
 public class ControllerScanner {
-    
-    public static Map<String, Method> scanControllers(ServletContext servletContext) {
-        Map<String, Method> urlMapping = new HashMap<>();
-        
+
+    public static Map<String, Map<String, Method>> scanControllers(ServletContext context) {
+        Map<String, Map<String, Method>> urlMapping = new HashMap<>();
+
         try {
-            String packagesToScan = servletContext.getInitParameter("packagesToScan");
-            
+            String packagesToScan = context.getInitParameter("packagesToScan");
+
             if (packagesToScan != null && !packagesToScan.trim().isEmpty()) {
                 // Scanner uniquement les packages spécifiés
                 ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
@@ -28,7 +28,7 @@ public class ControllerScanner {
                 }
             } else {
                 // Scanner tous les packages
-                String classesPath = servletContext.getRealPath("/WEB-INF/classes");
+                String classesPath = context.getRealPath("/WEB-INF/classes");
                 if (classesPath != null) {
                     File classesDir = new File(classesPath);
                     if (classesDir.exists() && classesDir.isDirectory()) {
@@ -36,19 +36,20 @@ public class ControllerScanner {
                     }
                 }
             }
-            
+
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
+
         return urlMapping;
     }
 
-    private static void scanPackage(String packageName, ClassLoader classLoader, Map<String, Method> urlMapping) {
+    private static void scanPackage(String packageName, ClassLoader classLoader,
+            Map<String, Map<String, Method>> urlMapping) {
         try {
             String path = packageName.replace('.', '/');
             URL resource = classLoader.getResource(path);
-            
+
             if (resource != null) {
                 File directory = new File(resource.getFile());
                 if (directory.exists() && directory.isDirectory()) {
@@ -60,10 +61,11 @@ public class ControllerScanner {
         }
     }
 
-    private static void scanDirectory(File directory, String packageName, Map<String, Method> urlMapping) {
+    private static void scanDirectory(File directory, String packageName, Map<String, Map<String, Method>> urlMapping) {
         File[] files = directory.listFiles();
-        if (files == null) return;
-        
+        if (files == null)
+            return;
+
         for (File file : files) {
             if (file.isDirectory()) {
                 String newPackage = packageName.isEmpty() ? file.getName() : packageName + "." + file.getName();
@@ -78,7 +80,10 @@ public class ControllerScanner {
                             if (method.isAnnotationPresent(MyURL.class)) {
                                 MyURL urlAnn = method.getAnnotation(MyURL.class);
                                 String url = urlAnn.value();
-                                urlMapping.put(url, method);
+                                String httpMethod = urlAnn.method().toUpperCase();
+
+                                urlMapping.putIfAbsent(url, new HashMap<>());
+                                urlMapping.get(url).put(httpMethod, method);
                             }
                         }
                     }

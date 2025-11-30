@@ -9,4 +9,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MyURL {
     String value() default "";
+
+    String method() default "GET";
 }

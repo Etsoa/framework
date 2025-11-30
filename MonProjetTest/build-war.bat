@@ -1,6 +1,10 @@
 @echo off
 setlocal
 
+:: Configurer Java 17
+set JAVA_HOME=C:\Program Files\Java\jdk-17
+set PATH=%JAVA_HOME%\bin;%PATH%
+
 :: Nom du projet et chemins
 set WAR_NAME=framework-test.war
 set SRC_DIR=%~dp0

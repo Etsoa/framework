@@ -7,18 +7,18 @@ import itu.framework.model.ModelView;
 
 @MyController(value = "Test")
 public class ControllerTest {
-    
-    @MyURL(value = "/test")
+
+    @MyURL(value = "/test", method = "GET")
     public String test() {
         return "Méthode test() exécutée avec succès !";
     }
-    
-    @MyURL(value = "/hello")
+
+    @MyURL(value = "/hello", method = "GET")
     public String hello() {
         return "Hello World depuis le contrôleur !";
     }
 
-    @MyURL(value = "/page")
+    @MyURL(value = "/page", method = "GET")
     public ModelView showPage() {
         ModelView mv = new ModelView("index.jsp");
         mv.addItem("message", "Hello depuis le contrôleur !");
@@ -26,24 +26,24 @@ public class ControllerTest {
         return mv;
     }
 
-    @MyURL(value = "/admin")
+    @MyURL(value = "/admin", method = "GET")
     public ModelView showAdmin() {
-        return new ModelView("admin/dashboard.jsp");  
+        return new ModelView("admin/dashboard.jsp");
     }
 
-    @MyURL(value = "/departement/{id}")
+    @MyURL(value = "/departement/{id}", method = "GET")
     public ModelView getDepartementById(Integer id) {
         ModelView mv = new ModelView("departement.jsp");
         mv.addItem("id", id);
         return mv;
     }
 
-    @MyURL(value = "/form")
+    @MyURL(value = "/form", method = "GET")
     public ModelView showForm() {
         return new ModelView("form.jsp");
     }
 
-    @MyURL(value = "/submit-form")
+    @MyURL(value = "/form", method = "POST")
     public ModelView submitForm(@MyParam("name") String name, @MyParam("age") Integer age) {
         ModelView mv = new ModelView("form-result.jsp");
         mv.addItem("name", name);
