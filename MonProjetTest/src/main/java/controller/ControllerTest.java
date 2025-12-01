@@ -4,37 +4,21 @@ import itu.framework.annotations.MyController;
 import itu.framework.annotations.MyURL;
 import itu.framework.annotations.MyParam;
 import itu.framework.model.ModelView;
+import java.util.HashMap;
 
 @MyController(value = "Test")
 public class ControllerTest {
-
-    @MyURL(value = "/test", method = "GET")
-    public String test() {
-        return "Méthode test() exécutée avec succès !";
-    }
-
-    @MyURL(value = "/hello", method = "GET")
-    public String hello() {
-        return "Hello World depuis le contrôleur !";
-    }
-
-    @MyURL(value = "/page", method = "GET")
-    public ModelView showPage() {
-        ModelView mv = new ModelView("index.jsp");
-        mv.addItem("message", "Hello depuis le contrôleur !");
-        mv.addItem("date", new java.util.Date());
-        return mv;
-    }
 
     @MyURL(value = "/admin", method = "GET")
     public ModelView showAdmin() {
         return new ModelView("admin/dashboard.jsp");
     }
 
-    @MyURL(value = "/departement/{id}", method = "GET")
-    public ModelView getDepartementById(Integer id) {
+    @MyURL(value = "/departement/{id}/{b}", method = "GET")
+    public ModelView getDepartementById(Integer id, String b) {
         ModelView mv = new ModelView("departement.jsp");
         mv.addItem("id", id);
+        mv.addItem("b", b);
         return mv;
     }
 
@@ -44,10 +28,10 @@ public class ControllerTest {
     }
 
     @MyURL(value = "/form", method = "POST")
-    public ModelView submitForm(@MyParam("name") String name, @MyParam("age") Integer age) {
+    public ModelView submitForm(HashMap<String, Object> params) {
         ModelView mv = new ModelView("form-result.jsp");
-        mv.addItem("name", name);
-        mv.addItem("age", age);
+        mv.addItem("name", params.get("name"));
+        mv.addItem("age", params.get("age"));
         return mv;
     }
 }
