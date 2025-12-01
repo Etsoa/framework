@@ -124,9 +124,24 @@ public class FrontServlet extends HttpServlet {
 
         java.lang.reflect.Parameter[] methodParams = method.getParameters();
 
-        if ("POST".equals(httpMethod) && methodParams.length == 1
-                && methodParams[0].getType() == HashMap.class) {
-            return new Object[] { buildParameterMap(req) };
+        if ("POST".equals(httpMethod) && methodParams.length == 1) {
+            java.lang.reflect.Parameter param = methodParams[0];
+
+            // Vérifie que c'est exactement HashMap<String, Object>
+            if (param.getType() == HashMap.class) {
+                java.lang.reflect.Type genericType = param.getParameterizedType();
+                if (genericType instanceof java.lang.reflect.ParameterizedType) {
+                    java.lang.reflect.ParameterizedType paramType = (java.lang.reflect.ParameterizedType) genericType;
+                    java.lang.reflect.Type[] typeArgs = paramType.getActualTypeArguments();
+
+                    // Vérifie les types génériques: HashMap<String, Object>
+                    if (typeArgs.length == 2
+                            && typeArgs[0] == String.class
+                            && typeArgs[1] == Object.class) {
+                        return new Object[] { buildParameterMap(req) };
+                    }
+                }
+            }
         }
 
         return buildArgumentsFromParameters(req, methodParams, pathParams);
