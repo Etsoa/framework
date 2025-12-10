@@ -1,10 +1,11 @@
 package controller;
 
+import java.util.HashMap;
+
 import itu.framework.annotations.MyController;
 import itu.framework.annotations.MyURL;
-import itu.framework.annotations.MyParam;
 import itu.framework.model.ModelView;
-import java.util.HashMap;
+import models.Employe;
 
 @MyController(value = "Test")
 public class ControllerTest {
@@ -15,7 +16,7 @@ public class ControllerTest {
     }
 
     @MyURL(value = "/departement/{id}/{b}", method = "GET")
-    public ModelView getDepartementById(Integer id, String b) {
+    public ModelView getDepartementById(Integer id, String b) {  
         ModelView mv = new ModelView("departement.jsp");
         mv.addItem("id", id);
         mv.addItem("b", b);
@@ -32,6 +33,18 @@ public class ControllerTest {
         ModelView mv = new ModelView("form-result.jsp");
         mv.addItem("name", params.get("name"));
         mv.addItem("age", params.get("age"));
+        return mv;
+    }
+
+    @MyURL(value = "/form/employe", method = "GET")
+    public ModelView showFormEmploye() {
+        return new ModelView("employeForm.jsp");
+    }
+
+    @MyURL(value = "/employe", method = "POST")
+    public ModelView submitFormEmploye(Employe e) {
+        ModelView mv = new ModelView("employe.jsp");
+        mv.addItem("employe ", e);
         return mv;
     }
 }
