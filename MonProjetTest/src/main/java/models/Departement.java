@@ -1,8 +1,15 @@
 package models;
 
+import java.util.List;
+import itu.framework.annotations.JsonIgnore;
+
 public class Departement {
     private Integer id;
     private String nom;
+
+    // Pour éviter la boucle infinie : Departement -> List<Employe> -> Departement
+    @JsonIgnore
+    private List<models.Employe> employes;
 
     public Departement() {
     }
@@ -26,6 +33,14 @@ public class Departement {
 
     public void setNom(String nom) {
         this.nom = nom;
+    }
+
+    public List<models.Employe> getEmployes() {
+        return employes;
+    }
+
+    public void setEmployes(List<models.Employe> employes) {
+        this.employes = employes;
     }
 
     public void save() {

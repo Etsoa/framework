@@ -1,10 +1,18 @@
 package itu.framework.servlet;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import itu.framework.annotations.JsonIgnore;
+import itu.framework.model.JsonResponse;
 import itu.framework.model.ModelView;
 import itu.framework.util.ControllerScanner;
 import jakarta.servlet.ServletException;
@@ -305,11 +313,101 @@ public class FrontServlet extends HttpServlet {
     private void handleResult(HttpServletRequest req, HttpServletResponse resp, Object result)
             throws ServletException, IOException {
 
-        if (result instanceof ModelView) {
+        if (result instanceof JsonResponse) {
+            handleJsonResponse(resp, (JsonResponse) result);
+        } else if (result instanceof ModelView) {
             handleModelViewResult(req, resp, (ModelView) result);
         } else if (result != null) {
             resp.getWriter().write(result.toString());
         }
+    }
+
+    private void handleJsonResponse(HttpServletResponse resp, JsonResponse jsonResponse) throws IOException {
+        resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
+        resp.setStatus(jsonResponse.getStatus());
+
+        JSONObject json = new JSONObject();
+        json.put("status", jsonResponse.getStatus());
+        json.put("message", jsonResponse.getMessage());
+
+        if (jsonResponse.getData() != null) {
+            json.put("data", objectToJson(jsonResponse.getData(), new HashSet<>()));
+        } else {
+            json.put("data", JSONObject.NULL);
+        }
+
+        if (jsonResponse.getError() != null) {
+            json.put("error", jsonResponse.getError());
+        }
+
+        resp.getWriter().write(json.toString());
+    }
+
+    private Object objectToJson(Object obj, Set<Object> visited) {
+        if (obj == null) {
+            return JSONObject.NULL;
+        }
+
+        // Évite les boucles infinies
+        if (visited.contains(obj)) {
+            return JSONObject.NULL;
+        }
+
+        // Types primitifs et wrappers
+        if (obj instanceof String || obj instanceof Number || obj instanceof Boolean) {
+            return obj;
+        }
+
+        // Collections
+        if (obj instanceof java.util.Collection) {
+            visited.add(obj);
+            JSONArray array = new JSONArray();
+            for (Object item : (java.util.Collection<?>) obj) {
+                array.put(objectToJson(item, visited));
+            }
+            visited.remove(obj);
+            return array;
+        }
+
+        // Map
+        if (obj instanceof Map) {
+            visited.add(obj);
+            JSONObject jsonObj = new JSONObject();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) obj).entrySet()) {
+                jsonObj.put(entry.getKey().toString(), objectToJson(entry.getValue(), visited));
+            }
+            visited.remove(obj);
+            return jsonObj;
+        }
+
+        // Objets personnalisés
+        visited.add(obj);
+        JSONObject jsonObj = new JSONObject();
+
+        try {
+            Field[] fields = obj.getClass().getDeclaredFields();
+            for (Field field : fields) {
+                // Ignore les champs avec @JsonIgnore
+                if (field.isAnnotationPresent(JsonIgnore.class)) {
+                    continue;
+                }
+
+                field.setAccessible(true);
+                Object value = field.get(obj);
+
+                if (value != null) {
+                    jsonObj.put(field.getName(), objectToJson(value, visited));
+                } else {
+                    jsonObj.put(field.getName(), JSONObject.NULL);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        visited.remove(obj);
+        return jsonObj;
     }
 
     private void handleModelViewResult(HttpServletRequest req, HttpServletResponse resp, ModelView mv)

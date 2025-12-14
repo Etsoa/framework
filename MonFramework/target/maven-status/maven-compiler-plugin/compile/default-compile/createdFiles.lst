@@ -1,4 +1,6 @@
 itu\framework\annotations\MyURL.class
+itu\framework\model\JsonResponse.class
+itu\framework\annotations\JsonIgnore.class
 itu\framework\servlet\FrontServlet.class
 itu\framework\annotations\MyController.class
 itu\framework\annotations\MyParam.class

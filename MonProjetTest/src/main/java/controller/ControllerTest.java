@@ -1,10 +1,14 @@
 package controller;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 
 import itu.framework.annotations.MyController;
 import itu.framework.annotations.MyURL;
+import itu.framework.model.JsonResponse;
 import itu.framework.model.ModelView;
+import models.Departement;
 import models.Employe;
 
 @MyController(value = "Test")
@@ -16,7 +20,7 @@ public class ControllerTest {
     }
 
     @MyURL(value = "/departement/{id}/{b}", method = "GET")
-    public ModelView getDepartementById(Integer id, String b) {  
+    public ModelView getDepartementById(Integer id, String b) {
         ModelView mv = new ModelView("departement.jsp");
         mv.addItem("id", id);
         mv.addItem("b", b);
@@ -47,4 +51,15 @@ public class ControllerTest {
         mv.addItem("employe ", e);
         return mv;
     }
+
+    @MyURL(value = "/api/employe", method = "POST")
+    public JsonResponse submitFormEmployeJson(Employe e) {
+        // Vous pouvez ajouter des validations ici
+        if (e == null || e.getNom() == null || e.getNom().isEmpty()) {
+            return JsonResponse.badRequest("Le nom de l'employé est requis");
+        }
+
+        return JsonResponse.success(e, "Employé créé avec succès");
+    }
+
 }
