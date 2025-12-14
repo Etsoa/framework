@@ -1,2 +1,3 @@
-models\Personne.class
+models\Departement.class
+models\Employe.class
 controller\ControllerTest.class
