@@ -54,11 +54,9 @@ public class ControllerTest {
 
     @MyURL(value = "/api/employe", method = "POST")
     public JsonResponse submitFormEmployeJson(Employe e) {
-        // Vous pouvez ajouter des validations ici
         if (e == null || e.getNom() == null || e.getNom().isEmpty()) {
             return JsonResponse.badRequest("Le nom de l'employé est requis");
         }
-
         return JsonResponse.success(e, "Employé créé avec succès");
     }
 
