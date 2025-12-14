@@ -124,12 +124,41 @@ public class FrontServlet extends HttpServlet {
 
         java.lang.reflect.Parameter[] methodParams = method.getParameters();
 
-        if ("POST".equals(httpMethod) && methodParams.length == 1
-                && methodParams[0].getType() == HashMap.class) {
-            return new Object[] { buildParameterMap(req) };
+        if ("POST".equals(httpMethod) && methodParams.length == 1) {
+            java.lang.reflect.Parameter param = methodParams[0];
+
+            // Vérifie que c'est exactement HashMap<String, Object>
+            if (param.getType() == HashMap.class) {
+                java.lang.reflect.Type genericType = param.getParameterizedType();
+                if (genericType instanceof java.lang.reflect.ParameterizedType) {
+                    java.lang.reflect.ParameterizedType paramType = (java.lang.reflect.ParameterizedType) genericType;
+                    java.lang.reflect.Type[] typeArgs = paramType.getActualTypeArguments();
+
+                    // Vérifie les types génériques: HashMap<String, Object>
+                    if (typeArgs.length == 2
+                            && typeArgs[0] == String.class
+                            && typeArgs[1] == Object.class) {
+                        return new Object[] { buildParameterMap(req) };
+                    }
+                }
+            }
         }
 
         return buildArgumentsFromParameters(req, methodParams, pathParams);
+    }
+
+    private boolean isCustomObject(Class<?> type) {
+        return !type.isPrimitive()
+                && !type.equals(String.class)
+                && !type.equals(Integer.class)
+                && !type.equals(Long.class)
+                && !type.equals(Double.class)
+                && !type.equals(Boolean.class)
+                && !type.equals(Float.class)
+                && !type.equals(Short.class)
+                && !type.equals(Byte.class)
+                && !type.equals(Character.class)
+                && !type.getName().startsWith("java.");
     }
 
     private HashMap<String, Object> buildParameterMap(HttpServletRequest req) {
@@ -152,11 +181,89 @@ public class FrontServlet extends HttpServlet {
 
         for (int i = 0; i < methodParams.length; i++) {
             java.lang.reflect.Parameter param = methodParams[i];
-            String value = getParameterValue(req, param, pathParams);
-            args[i] = convertParameterValue(value, param.getType());
+            Class<?> paramType = param.getType();
+
+            // Si c'est un objet personnalisé, on le construit depuis les paramètres
+            if (isCustomObject(paramType)) {
+                args[i] = buildObjectFromParameters(req, param.getName(), paramType);
+            } else {
+                String value = getParameterValue(req, param, pathParams);
+                args[i] = convertParameterValue(value, paramType);
+            }
         }
 
         return args;
+    }
+
+    private Object buildObjectFromParameters(HttpServletRequest req, String paramName, Class<?> objectType) {
+        try {
+            Object instance = objectType.getDeclaredConstructor().newInstance();
+            String prefix = paramName + ".";
+
+            java.util.Enumeration<String> paramNames = req.getParameterNames();
+            while (paramNames.hasMoreElements()) {
+                String fullParamName = paramNames.nextElement();
+
+                if (fullParamName.startsWith(prefix)) {
+                    String propertyPath = fullParamName.substring(prefix.length());
+                    String value = req.getParameter(fullParamName);
+
+                    setPropertyValue(instance, propertyPath, value);
+                }
+            }
+
+            return instance;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void setPropertyValue(Object obj, String propertyPath, String value) {
+        try {
+            String[] parts = propertyPath.split("\\.", 2);
+            String currentProperty = parts[0];
+
+            // Trouve le setter pour la propriété courante
+            String setterName = "set" + Character.toUpperCase(currentProperty.charAt(0))
+                    + currentProperty.substring(1);
+
+            // Trouve le type de la propriété via le getter
+            String getterName = "get" + Character.toUpperCase(currentProperty.charAt(0))
+                    + currentProperty.substring(1);
+
+            Method getter = null;
+            try {
+                getter = obj.getClass().getMethod(getterName);
+            } catch (NoSuchMethodException e) {
+                // Si pas de getter, on ignore cette propriété
+                return;
+            }
+
+            Class<?> propertyType = getter.getReturnType();
+
+            if (parts.length == 1) {
+                // Propriété simple - on assigne directement la valeur
+                Method setter = obj.getClass().getMethod(setterName, propertyType);
+                Object convertedValue = convertParameterValue(value, propertyType);
+                setter.invoke(obj, convertedValue);
+            } else {
+                // Propriété imbriquée - on crée/récupère l'objet imbriqué
+                Method setter = obj.getClass().getMethod(setterName, propertyType);
+
+                Object nestedObj = getter.invoke(obj);
+                if (nestedObj == null) {
+                    // Crée l'objet imbriqué s'il n'existe pas
+                    nestedObj = propertyType.getDeclaredConstructor().newInstance();
+                    setter.invoke(obj, nestedObj);
+                }
+
+                // Récursion pour la propriété imbriquée
+                setPropertyValue(nestedObj, parts[1], value);
+            }
+        } catch (Exception e) {
+            // Ignore silencieusement les propriétés inexistantes
+        }
     }
 
     private String getParameterValue(HttpServletRequest req, java.lang.reflect.Parameter param,
