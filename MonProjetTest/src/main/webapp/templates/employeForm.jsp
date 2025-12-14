@@ -7,7 +7,7 @@
 </head>
 <body>
     <h1>Formulaire d' employe</h1>
-    <form action="${pageContext.request.contextPath}/form" method="post">
+    <form action="${pageContext.request.contextPath}/employe" method="post">
         <div>
             <label for="nom">Nom:</label>
             <input type="text" id="e.nom" name="e.nom" value="Dupont" required>
@@ -22,7 +22,7 @@
         </div>
         <div>
             <label for="salaire">salaire:</label>
-            <input type="number" id="e.salaire" name="e.salaire" value="Jeandupont@gmail.com" required>
+            <input type="number" step="0.01" id="e.salaire" name="e.salaire" value="2500.00" required>
         </div>
         <div>
             <label for="nom departement">nom departement:</label>
