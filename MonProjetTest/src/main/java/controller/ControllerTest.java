@@ -48,7 +48,7 @@ public class ControllerTest {
     @MyURL(value = "/employe", method = "POST")
     public ModelView submitFormEmploye(Employe e) {
         ModelView mv = new ModelView("employe.jsp");
-        mv.addItem("employe ", e);
+        mv.addItem("employe", e);
         return mv;
     }
 
