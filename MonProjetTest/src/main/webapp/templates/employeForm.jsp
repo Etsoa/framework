@@ -26,9 +26,10 @@
         </div>
         <div>
             <label for="nom departement">nom departement:</label>
-            <input type="text" id="e.d.nom" name="e.d.nom" value="ressources humaines" required>
+            <input type="text" id="e.departement.nom" name="e.departement.nom" value="ressources humaines" required>
         </div>
-        <button type="submit">Envoyer</button>
+        <button type="submit" name="action" value="jsp">Envoyer (Vue JSP)</button>
+        <button type="submit" name="action" value="json" formaction="${pageContext.request.contextPath}/api/employe">Envoyer (JSON)</button>
     </form>
 </body>
 </html>

@@ -19,7 +19,14 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
+import jakarta.servlet.annotation.MultipartConfig;
+
+@MultipartConfig
 public class FrontServlet extends HttpServlet {
 
     private static class MethodMatch {
@@ -132,21 +139,20 @@ public class FrontServlet extends HttpServlet {
 
         java.lang.reflect.Parameter[] methodParams = method.getParameters();
 
-        if ("POST".equals(httpMethod) && methodParams.length == 1) {
+        // Gestion upload de fichiers : Map<String, byte[]>
+        if (isMultipart(req) && methodParams.length == 1) {
             java.lang.reflect.Parameter param = methodParams[0];
-
-            // Vérifie que c'est exactement HashMap<String, Object>
-            if (param.getType() == HashMap.class) {
+            if (param.getType() == Map.class) {
                 java.lang.reflect.Type genericType = param.getParameterizedType();
                 if (genericType instanceof java.lang.reflect.ParameterizedType) {
                     java.lang.reflect.ParameterizedType paramType = (java.lang.reflect.ParameterizedType) genericType;
                     java.lang.reflect.Type[] typeArgs = paramType.getActualTypeArguments();
-
-                    // Vérifie les types génériques: HashMap<String, Object>
                     if (typeArgs.length == 2
                             && typeArgs[0] == String.class
-                            && typeArgs[1] == Object.class) {
-                        return new Object[] { buildParameterMap(req) };
+                            && (typeArgs[1].getTypeName().equals("byte[]") || typeArgs[1] == byte[].class)) {
+                        Map<String, byte[]> files = extractFilesFromRequest(req);
+                        saveFilesToUploads(files);
+                        return new Object[] { files };
                     }
                 }
             }
@@ -463,5 +469,48 @@ public class FrontServlet extends HttpServlet {
         }
 
         return params;
+    }
+
+    private boolean isMultipart(HttpServletRequest req) {
+        String contentType = req.getContentType();
+        return contentType != null && contentType.toLowerCase().startsWith("multipart/");
+    }
+
+    private Map<String, byte[]> extractFilesFromRequest(HttpServletRequest req) {
+        Map<String, byte[]> files = new HashMap<>();
+        try {
+            for (Part part : req.getParts()) {
+                String name = part.getSubmittedFileName();
+                if (name != null && !name.isEmpty()) {
+                    byte[] content = part.getInputStream().readAllBytes();
+                    files.put(name, content);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return files;
+    }
+
+    private void saveFilesToUploads(Map<String, byte[]> files) {
+        String catalinaBase = System.getProperty("catalina.base");
+        if (catalinaBase == null) {
+            catalinaBase = System.getenv("CATALINA_BASE");
+        }
+        if (catalinaBase == null) {
+            catalinaBase = "C:/Program Files/Apache Software Foundation/Tomcat 11.0";
+        }
+        Path uploadDir = Paths.get(catalinaBase, "uploads");
+        try {
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+            }
+            for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+                Path filePath = uploadDir.resolve(entry.getKey());
+                Files.write(filePath, entry.getValue());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
