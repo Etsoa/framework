@@ -3,6 +3,7 @@ package controller;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import itu.framework.annotations.MyController;
 import itu.framework.annotations.MyURL;
@@ -58,6 +59,18 @@ public class ControllerTest {
             return JsonResponse.badRequest("Le nom de l'employé est requis");
         }
         return JsonResponse.success(e, "Employé créé avec succès");
+    }
+
+    @MyURL(value = "/upload", method = "GET")
+    public ModelView showFormUpload() {
+        return new ModelView("upload.jsp");
+    }
+
+    @MyURL(value = "/upload", method = "POST")
+    public ModelView handleUpload(Map<String, byte[]> files) {
+        ModelView mv = new ModelView("upload-result.jsp");
+        mv.addItem("nbFiles", files != null ? files.size() : 0);
+        return mv;
     }
 
 }
