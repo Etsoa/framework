@@ -197,8 +197,17 @@ public class FrontServlet extends HttpServlet {
             java.lang.reflect.Parameter param = methodParams[i];
             Class<?> paramType = param.getType();
 
+            // Si c'est un HashMap, on construit la map depuis les paramètres de la requête
+            if (paramType == HashMap.class || paramType == Map.class) {
+                HashMap<String, Object> paramsMap = buildParameterMap(req);
+                // Ajoute aussi les path params si présents
+                if (pathParams != null) {
+                    paramsMap.putAll(pathParams);
+                }
+                args[i] = paramsMap;
+            }
             // Si c'est un objet personnalisé, on le construit depuis les paramètres
-            if (isCustomObject(paramType)) {
+            else if (isCustomObject(paramType)) {
                 args[i] = buildObjectFromParameters(req, param.getName(), paramType);
             } else {
                 String value = getParameterValue(req, param, pathParams);
@@ -213,16 +222,31 @@ public class FrontServlet extends HttpServlet {
         try {
             Object instance = objectType.getDeclaredConstructor().newInstance();
             String prefix = paramName + ".";
+            boolean foundPrefixedParams = false;
 
+            // D'abord, cherche les paramètres préfixés (ex: vehicule.reference)
             java.util.Enumeration<String> paramNames = req.getParameterNames();
             while (paramNames.hasMoreElements()) {
                 String fullParamName = paramNames.nextElement();
 
                 if (fullParamName.startsWith(prefix)) {
+                    foundPrefixedParams = true;
                     String propertyPath = fullParamName.substring(prefix.length());
                     String value = req.getParameter(fullParamName);
 
                     setPropertyValue(instance, propertyPath, value);
+                }
+            }
+
+            // Si aucun paramètre préfixé trouvé, cherche les paramètres directs (ex: reference)
+            if (!foundPrefixedParams) {
+                Field[] fields = objectType.getDeclaredFields();
+                for (Field field : fields) {
+                    String fieldName = field.getName();
+                    String value = req.getParameter(fieldName);
+                    if (value != null && !value.isEmpty()) {
+                        setPropertyValue(instance, fieldName, value);
+                    }
                 }
             }
 
@@ -298,8 +322,9 @@ public class FrontServlet extends HttpServlet {
         return req.getParameter(param.getName());
     }
 
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     private Object convertParameterValue(String value, Class<?> paramType) {
-        if (value == null) {
+        if (value == null || value.isEmpty()) {
             return null;
         }
 
@@ -311,6 +336,14 @@ public class FrontServlet extends HttpServlet {
             return Double.parseDouble(value);
         } else if (paramType == Boolean.class || paramType == boolean.class) {
             return Boolean.parseBoolean(value);
+        } else if (paramType == java.sql.Date.class) {
+            return java.sql.Date.valueOf(value);
+        } else if (paramType == java.sql.Time.class) {
+            return java.sql.Time.valueOf(value);
+        } else if (paramType == java.sql.Timestamp.class) {
+            return java.sql.Timestamp.valueOf(value);
+        } else if (paramType.isEnum()) {
+            return Enum.valueOf((Class<Enum>) paramType, value);
         } else {
             return value;
         }
